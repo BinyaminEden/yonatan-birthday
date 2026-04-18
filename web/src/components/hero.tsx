@@ -43,13 +43,15 @@ export function Hero() {
         </div>
 
         <div className="order-1 md:order-2 relative flex justify-center">
-          <div className="relative w-[280px] sm:w-[340px] md:w-[380px] animate-bob">
-            <SlothPilot />
-            <div className="absolute -left-2 -top-2 bg-honey-400 text-forest-900 rounded-full w-20 h-20 flex flex-col items-center justify-center font-extrabold shadow-xl rotate-[-8deg]">
+          <div className="relative w-[280px] sm:w-[360px] md:w-[440px] animate-bob">
+            <div className="relative rounded-[2rem] overflow-hidden border-4 border-honey-400/50 shadow-2xl shadow-black/30">
+              <SlothPilot priority />
+            </div>
+            <div className="absolute -left-4 -top-4 bg-honey-400 text-forest-900 rounded-full w-20 h-20 flex flex-col items-center justify-center font-extrabold shadow-xl rotate-[-8deg] z-10">
               <span className="text-xs">תג</span>
               <span className="text-3xl leading-none">3</span>
             </div>
-            <div className="absolute -bottom-3 right-2 bg-forest-900/80 border border-honey-400/40 rounded-xl px-3 py-1.5 text-xs text-cream-100">
+            <div className="absolute -bottom-3 right-2 bg-forest-900/90 border border-honey-400/40 rounded-xl px-3 py-1.5 text-xs text-cream-100 z-10">
               <div className="text-honey-400 font-bold">יחידת חילוץ</div>
               <div>מבצע יונתן</div>
             </div>

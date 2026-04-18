@@ -6,6 +6,7 @@ import {
   EVENT_DATE_ISO,
   EVENT_LOCATION_TITLE,
   EVENT_LOCATION_ADDRESS,
+  EVENT_MAP_URL,
 } from "@/lib/constants";
 import { SlothPilot } from "@/components/sloth-pilot";
 
@@ -24,17 +25,18 @@ export default function InvitationPage() {
       value: EVENT_LOCATION_TITLE,
       sub: EVENT_LOCATION_ADDRESS,
       color: "bg-forest-700",
+      href: EVENT_MAP_URL,
     },
   ];
 
   return (
-    <main className="relative min-h-screen flex items-center justify-center p-5 bg-gradient-to-b from-cream-50 to-cream-100">
+    <main className="relative min-h-screen flex flex-col items-center justify-center py-10 px-5 bg-gradient-to-b from-cream-50 to-cream-100">
       <FloatingEmojis count={22} />
 
       <article className="relative z-10 w-full max-w-xl bg-white rounded-3xl shadow-xl border border-cream-200 p-8 sm:p-10 text-center">
         <div className="flex justify-center">
-          <div className="w-32 h-32 sm:w-40 sm:h-40 animate-bob">
-            <SlothPilot />
+          <div className="w-40 h-40 sm:w-52 sm:h-52 rounded-3xl overflow-hidden border-4 border-honey-400/40 shadow-lg animate-bob">
+            <SlothPilot priority />
           </div>
         </div>
 
@@ -47,23 +49,45 @@ export default function InvitationPage() {
         <p className="mt-2 text-ink-700">מוזמנים לחגוג יחד 🎉</p>
 
         <div className="mt-6 space-y-3 text-right">
-          {rows.map((r) => (
-            <div
-              key={r.label}
-              className="flex items-center gap-3 bg-cream-50 border border-cream-200 rounded-2xl p-3"
-            >
-              <div
-                className={`shrink-0 w-11 h-11 rounded-xl ${r.color} text-cream-50 flex items-center justify-center text-xl`}
+          {rows.map((r) => {
+            const inner = (
+              <>
+                <div
+                  className={`shrink-0 w-11 h-11 rounded-xl ${r.color} text-cream-50 flex items-center justify-center text-xl`}
+                >
+                  {r.icon}
+                </div>
+                <div className="flex-1">
+                  <div className="text-[11px] text-ink-500">{r.label}</div>
+                  <div className="font-bold text-forest-900">{r.value}</div>
+                  {r.sub && <div className="text-xs text-ink-500">{r.sub}</div>}
+                </div>
+                {r.href && (
+                  <div className="text-forest-600 text-xs flex items-center gap-1 self-center">
+                    נווט <span aria-hidden>↖</span>
+                  </div>
+                )}
+              </>
+            );
+            return r.href ? (
+              <a
+                key={r.label}
+                href={r.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 bg-cream-50 border border-cream-200 hover:border-forest-600/50 hover:bg-cream-100 transition rounded-2xl p-3"
               >
-                {r.icon}
+                {inner}
+              </a>
+            ) : (
+              <div
+                key={r.label}
+                className="flex items-center gap-3 bg-cream-50 border border-cream-200 rounded-2xl p-3"
+              >
+                {inner}
               </div>
-              <div>
-                <div className="text-[11px] text-ink-500">{r.label}</div>
-                <div className="font-bold text-forest-900">{r.value}</div>
-                {r.sub && <div className="text-xs text-ink-500">{r.sub}</div>}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="mt-7 text-2xl">🎂🦥✈️</div>
@@ -84,7 +108,7 @@ export default function InvitationPage() {
         </div>
       </article>
 
-      <div className="absolute bottom-3 inset-x-0 text-center text-xs text-ink-500 z-10">
+      <div className="relative z-10 mt-6 text-center text-xs text-ink-500">
         ⭐ יום הולדת שמח יונתן ⭐
       </div>
     </main>
