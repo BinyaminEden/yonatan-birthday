@@ -48,6 +48,13 @@ export default function InvitationPage() {
         <h1 className="mt-3 text-4xl sm:text-5xl font-extrabold text-forest-900">יונתן בן 3!</h1>
         <p className="mt-2 text-ink-700">מוזמנים לחגוג יחד 🎉</p>
 
+        <div className="mt-5 bg-cream-50 border border-cream-200 rounded-2xl px-5 py-4 text-forest-900 leading-relaxed">
+          <p>יונתן שלנו חוגג שלוש שנים</p>
+          <p>ואנחנו מתרגשים ואתכם מזמינים</p>
+          <p>למסיבת יום ההולדת והעצמאות</p>
+          <p>לישראל וליונתן באותה הזדמנות 🥳😄🤗</p>
+        </div>
+
         <div className="mt-6 space-y-3 text-right">
           {rows.map((r) => {
             const inner = (
