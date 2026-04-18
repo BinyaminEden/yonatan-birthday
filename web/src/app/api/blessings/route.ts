@@ -1,17 +1,24 @@
 import { NextRequest } from "next/server";
-import { getServerClient, STORAGE_BUCKET, hasSupabaseConfig } from "@/lib/supabase";
+import { getServerClient, hasSupabaseConfig } from "@/lib/supabase";
 import { allowRequest } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const MAX_BYTES = 25 * 1024 * 1024;
-
 function clientIp(req: NextRequest): string {
-  const h = req.headers;
-  const fwd = h.get("x-forwarded-for");
+  const fwd = req.headers.get("x-forwarded-for");
   if (fwd) return fwd.split(",")[0].trim();
-  return h.get("x-real-ip") ?? "unknown";
+  return req.headers.get("x-real-ip") ?? "unknown";
+}
+
+function isAllowedMediaUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    if (u.protocol !== "https:") return false;
+    return u.hostname.endsWith(".r2.dev") || u.hostname.endsWith(".r2.cloudflarestorage.com");
+  } catch {
+    return false;
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -24,63 +31,44 @@ export async function POST(req: NextRequest) {
 
   const ip = clientIp(req);
   if (!allowRequest(ip)) {
-    return Response.json(
-      { error: "רגע רגע — נסו שוב בעוד דקה 🙂" },
-      { status: 429 },
-    );
+    return Response.json({ error: "רגע רגע — נסו שוב בעוד דקה 🙂" }, { status: 429 });
   }
 
-  let fd: FormData;
-  try {
-    fd = await req.formData();
-  } catch {
-    return Response.json({ error: "טופס לא תקין" }, { status: 400 });
-  }
+  const body = (await req.json().catch(() => null)) as
+    | {
+        name?: string;
+        message?: string;
+        mediaUrl?: string | null;
+        mediaType?: "image" | "video" | null;
+        company?: string;
+      }
+    | null;
+  if (!body) return Response.json({ error: "טופס לא תקין" }, { status: 400 });
 
-  // honeypot
-  if ((fd.get("company") ?? "").toString().trim() !== "") {
+  if ((body.company ?? "").trim() !== "") {
     return Response.json({ ok: true });
   }
 
-  const name = (fd.get("name") ?? "").toString().trim();
-  const message = (fd.get("message") ?? "").toString().trim();
-  const file = fd.get("media");
+  const name = (body.name ?? "").trim();
+  const message = (body.message ?? "").trim();
 
-  if (!name || name.length > 80) {
-    return Response.json({ error: "שם לא תקין" }, { status: 400 });
-  }
-  if (!message || message.length > 1000) {
-    return Response.json({ error: "ברכה לא תקינה" }, { status: 400 });
-  }
+  if (!name || name.length > 80) return Response.json({ error: "שם לא תקין" }, { status: 400 });
+  if (!message || message.length > 1000) return Response.json({ error: "ברכה לא תקינה" }, { status: 400 });
 
   let media_url: string | null = null;
   let media_type: "image" | "video" | null = null;
-
-  const supabase = getServerClient();
-
-  if (file && file instanceof File && file.size > 0) {
-    if (file.size > MAX_BYTES) {
-      return Response.json({ error: "הקובץ גדול מדי (מקס' 25MB)" }, { status: 400 });
+  if (body.mediaUrl) {
+    if (!isAllowedMediaUrl(body.mediaUrl)) {
+      return Response.json({ error: "כתובת מדיה לא חוקית" }, { status: 400 });
     }
-    const mime = file.type || "application/octet-stream";
-    if (mime.startsWith("image/")) media_type = "image";
-    else if (mime.startsWith("video/")) media_type = "video";
-    else return Response.json({ error: "סוג קובץ לא נתמך" }, { status: 400 });
-
-    const ext = (file.name.split(".").pop() ?? "bin").toLowerCase().slice(0, 6);
-    const path = `${Date.now()}-${crypto.randomUUID()}.${ext}`;
-    const bytes = new Uint8Array(await file.arrayBuffer());
-
-    const up = await supabase.storage
-      .from(STORAGE_BUCKET)
-      .upload(path, bytes, { contentType: mime, upsert: false });
-    if (up.error) {
-      return Response.json({ error: "העלאת הקובץ נכשלה" }, { status: 500 });
+    if (body.mediaType !== "image" && body.mediaType !== "video") {
+      return Response.json({ error: "סוג מדיה לא חוקי" }, { status: 400 });
     }
-    const pub = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(up.data.path);
-    media_url = pub.data.publicUrl;
+    media_url = body.mediaUrl;
+    media_type = body.mediaType;
   }
 
+  const supabase = getServerClient();
   const insert = await supabase
     .from("blessings")
     .insert({ name, message, media_url, media_type, approved: true })
@@ -90,7 +78,6 @@ export async function POST(req: NextRequest) {
   if (insert.error) {
     return Response.json({ error: "שמירת הברכה נכשלה" }, { status: 500 });
   }
-
   return Response.json({ ok: true, id: insert.data.id });
 }
 

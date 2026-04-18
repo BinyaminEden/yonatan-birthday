@@ -2,13 +2,62 @@
 
 import { useRef, useState } from "react";
 
+const MAX_BYTES = 500 * 1024 * 1024;
+
+type Status =
+  | { kind: "idle" }
+  | { kind: "ok" }
+  | { kind: "err"; msg: string }
+  | { kind: "uploading"; progress: number };
+
 export function BlessingForm() {
   const formRef = useRef<HTMLFormElement>(null);
   const [busy, setBusy] = useState(false);
-  const [state, setState] = useState<
-    { kind: "idle" } | { kind: "ok" } | { kind: "err"; msg: string }
-  >({ kind: "idle" });
-  const [fileLabel, setFileLabel] = useState<string | null>(null);
+  const [state, setState] = useState<Status>({ kind: "idle" });
+  const [file, setFile] = useState<File | null>(null);
+
+  async function uploadFile(f: File): Promise<{ url: string; type: "image" | "video" }> {
+    const type: "image" | "video" | null = f.type.startsWith("image/")
+      ? "image"
+      : f.type.startsWith("video/")
+      ? "video"
+      : null;
+    if (!type) throw new Error("סוג קובץ לא נתמך");
+    if (f.size > MAX_BYTES) throw new Error("הקובץ גדול מדי (מקס' 500MB)");
+
+    const signRes = await fetch("/api/upload-url", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ contentType: f.type, size: f.size, filename: f.name }),
+    });
+    if (!signRes.ok) {
+      const j = (await signRes.json().catch(() => ({}))) as { error?: string };
+      throw new Error(j.error ?? "שגיאה ביצירת קישור העלאה");
+    }
+    const { uploadUrl, publicUrl } = (await signRes.json()) as {
+      uploadUrl: string;
+      publicUrl: string;
+    };
+
+    await new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", uploadUrl);
+      xhr.setRequestHeader("Content-Type", f.type);
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          setState({ kind: "uploading", progress: e.loaded / e.total });
+        }
+      };
+      xhr.onload = () =>
+        xhr.status >= 200 && xhr.status < 300
+          ? resolve()
+          : reject(new Error(`העלאה נכשלה (${xhr.status})`));
+      xhr.onerror = () => reject(new Error("העלאה נכשלה — בעיית רשת"));
+      xhr.send(f);
+    });
+
+    return { url: publicUrl, type };
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -18,17 +67,32 @@ export function BlessingForm() {
 
     const form = e.currentTarget;
     const fd = new FormData(form);
+    const name = (fd.get("name") ?? "").toString().trim();
+    const message = (fd.get("message") ?? "").toString().trim();
+    const company = (fd.get("company") ?? "").toString();
 
     try {
-      const res = await fetch("/api/blessings", { method: "POST", body: fd });
+      let mediaUrl: string | null = null;
+      let mediaType: "image" | "video" | null = null;
+      if (file) {
+        const { url, type } = await uploadFile(file);
+        mediaUrl = url;
+        mediaType = type;
+      }
+
+      const res = await fetch("/api/blessings", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name, message, mediaUrl, mediaType, company }),
+      });
       if (!res.ok) {
         const j = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(j.error ?? `שגיאה (${res.status})`);
       }
+
       setState({ kind: "ok" });
       form.reset();
-      setFileLabel(null);
-      // Soft refresh of feed
+      setFile(null);
       setTimeout(() => window.location.reload(), 1100);
     } catch (err) {
       setState({ kind: "err", msg: err instanceof Error ? err.message : "שגיאה" });
@@ -36,6 +100,9 @@ export function BlessingForm() {
       setBusy(false);
     }
   }
+
+  const uploadPct =
+    state.kind === "uploading" ? Math.round(state.progress * 100) : null;
 
   return (
     <form
@@ -80,22 +147,21 @@ export function BlessingForm() {
           <input
             type="file"
             name="media"
-            accept="image/*,video/mp4,video/webm"
+            accept="image/*,video/*"
             className="sr-only"
             id="media-input"
-            onChange={(e) => setFileLabel(e.target.files?.[0]?.name ?? null)}
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           />
           <label htmlFor="media-input" className="cursor-pointer block">
             <div className="text-3xl">📎</div>
             <div className="mt-1 text-sm text-ink-700">
-              {fileLabel ?? "גררו לכאן או לחצו להעלאה"}
+              {file ? file.name : "גררו לכאן או לחצו להעלאה"}
             </div>
-            <div className="mt-2 text-xs text-ink-500">🖼️ תמונה • 🎬 סרטון</div>
+            <div className="mt-2 text-xs text-ink-500">🖼️ תמונה • 🎬 סרטון (עד 500MB)</div>
           </label>
         </div>
       </label>
 
-      {/* honeypot */}
       <input
         type="text"
         name="company"
@@ -110,8 +176,21 @@ export function BlessingForm() {
         disabled={busy}
         className="mt-5 w-full bg-rescue-500 hover:bg-rescue-600 disabled:opacity-60 transition text-cream-50 font-bold py-3 rounded-xl"
       >
-        {busy ? "שולח..." : "✈️ שלחו את הברכה"}
+        {busy
+          ? uploadPct !== null
+            ? `מעלה קובץ... ${uploadPct}%`
+            : "שולח..."
+          : "✈️ שלחו את הברכה"}
       </button>
+
+      {uploadPct !== null && busy && (
+        <div className="mt-3 h-2 bg-cream-200 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-forest-600 transition-all"
+            style={{ width: `${uploadPct}%` }}
+          />
+        </div>
+      )}
 
       {state.kind === "ok" && (
         <div className="mt-3 text-sm text-forest-700 bg-forest-500/10 border border-forest-500/30 rounded-lg px-3 py-2">
