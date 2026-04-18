@@ -44,8 +44,8 @@ export function Hero() {
 
         <div className="order-1 md:order-2 relative flex justify-center">
           <div className="relative w-[280px] sm:w-[360px] md:w-[440px] animate-bob">
-            <div className="relative rounded-[2rem] overflow-hidden border-4 border-honey-400/50 shadow-2xl shadow-black/30">
-              <SlothPilot priority />
+            <div className="relative rounded-[2rem] overflow-hidden border-4 border-honey-400/50 shadow-2xl shadow-black/30 bg-forest-900">
+              <SlothPilot priority className="block rounded-[calc(2rem-4px)]" />
             </div>
             <div className="absolute -left-4 -top-4 bg-honey-400 text-forest-900 rounded-full w-20 h-20 flex flex-col items-center justify-center font-extrabold shadow-xl rotate-[-8deg] z-10">
               <span className="text-xs">תג</span>
