@@ -36,7 +36,7 @@ export default function InvitationPage() {
       <article className="relative z-10 w-full max-w-xl bg-white rounded-3xl shadow-xl border border-cream-200 p-8 sm:p-10 text-center">
         <div className="flex justify-center">
           <div className="w-40 h-40 sm:w-52 sm:h-52 rounded-3xl overflow-hidden border-4 border-honey-400/40 shadow-lg animate-bob">
-            <SlothPilot priority />
+            <SlothPilot priority cover />
           </div>
         </div>
 
