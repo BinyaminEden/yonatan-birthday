@@ -2,19 +2,12 @@ import { NextRequest } from "next/server";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { getR2Client, R2_BUCKET, publicUrlFor, hasR2Config } from "@/lib/r2";
-import { allowRequest } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const MAX_BYTES = 500 * 1024 * 1024;
 const ALLOWED_PREFIXES = ["image/", "video/"];
-
-function clientIp(req: NextRequest): string {
-  const fwd = req.headers.get("x-forwarded-for");
-  if (fwd) return fwd.split(",")[0].trim();
-  return req.headers.get("x-real-ip") ?? "unknown";
-}
 
 function safeExt(name: string | undefined): string {
   if (!name) return "bin";
@@ -26,11 +19,6 @@ function safeExt(name: string | undefined): string {
 export async function POST(req: NextRequest) {
   if (!hasR2Config()) {
     return Response.json({ error: "Storage not configured" }, { status: 503 });
-  }
-
-  const ip = clientIp(req);
-  if (!allowRequest(ip)) {
-    return Response.json({ error: "רגע רגע — נסו שוב בעוד דקה 🙂" }, { status: 429 });
   }
 
   const body = (await req.json().catch(() => null)) as

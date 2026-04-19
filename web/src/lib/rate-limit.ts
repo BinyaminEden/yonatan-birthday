@@ -1,6 +1,6 @@
 const hits = new Map<string, number[]>();
-const WINDOW_MS = 60_000;
-const MAX_PER_WINDOW = 1;
+const WINDOW_MS = 30_000;
+const MAX_PER_WINDOW = 10;
 
 export function allowRequest(ip: string): boolean {
   const now = Date.now();
