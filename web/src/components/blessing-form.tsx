@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const MAX_BYTES = 500 * 1024 * 1024;
 
@@ -10,11 +10,35 @@ type Status =
   | { kind: "err"; msg: string }
   | { kind: "uploading"; progress: number };
 
+function formatSize(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export function BlessingForm() {
   const formRef = useRef<HTMLFormElement>(null);
   const [busy, setBusy] = useState(false);
   const [state, setState] = useState<Status>({ kind: "idle" });
   const [file, setFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!file) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
+  const kind: "image" | "video" | null = file
+    ? file.type.startsWith("image/")
+      ? "image"
+      : file.type.startsWith("video/")
+      ? "video"
+      : null
+    : null;
 
   async function uploadFile(f: File): Promise<{ url: string; type: "image" | "video" }> {
     const type: "image" | "video" | null = f.type.startsWith("image/")
@@ -57,6 +81,12 @@ export function BlessingForm() {
     });
 
     return { url: publicUrl, type };
+  }
+
+  function clearFile() {
+    setFile(null);
+    const input = document.getElementById("media-input") as HTMLInputElement | null;
+    if (input) input.value = "";
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -141,26 +171,68 @@ export function BlessingForm() {
         />
       </label>
 
-      <label className="block mt-4">
+      <div className="block mt-4">
         <span className="text-sm font-medium text-forest-900">צרפו תמונה או סרטון (לא חובה)</span>
-        <div className="mt-1 border-2 border-dashed border-cream-200 hover:border-forest-600/60 rounded-xl p-6 text-center cursor-pointer bg-cream-50">
-          <input
-            type="file"
-            name="media"
-            accept="image/*,video/*"
-            className="sr-only"
-            id="media-input"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          />
-          <label htmlFor="media-input" className="cursor-pointer block">
-            <div className="text-3xl">📎</div>
-            <div className="mt-1 text-sm text-ink-700">
-              {file ? file.name : "גררו לכאן או לחצו להעלאה"}
+
+        {file && previewUrl ? (
+          <div className="mt-1 relative rounded-xl overflow-hidden border border-cream-200 bg-cream-50">
+            {kind === "image" ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={previewUrl}
+                alt="תצוגה מקדימה"
+                className="w-full max-h-80 object-contain bg-black/5"
+              />
+            ) : kind === "video" ? (
+              <video
+                src={previewUrl}
+                controls
+                playsInline
+                className="w-full max-h-80 bg-black"
+              />
+            ) : null}
+            <div className="flex items-center justify-between gap-3 p-3 bg-cream-100 border-t border-cream-200 text-sm">
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-forest-900 font-medium">{file.name}</div>
+                <div className="text-xs text-ink-500">{formatSize(file.size)}</div>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <label
+                  htmlFor="media-input"
+                  className="cursor-pointer text-xs font-medium text-forest-700 hover:text-forest-900 underline"
+                >
+                  החליפו
+                </label>
+                <button
+                  type="button"
+                  onClick={clearFile}
+                  className="text-xs font-medium text-rescue-600 hover:text-rescue-700"
+                >
+                  הסירו
+                </button>
+              </div>
             </div>
+          </div>
+        ) : (
+          <label
+            htmlFor="media-input"
+            className="mt-1 block border-2 border-dashed border-cream-200 hover:border-forest-600/60 rounded-xl p-6 text-center cursor-pointer bg-cream-50"
+          >
+            <div className="text-3xl">📎</div>
+            <div className="mt-1 text-sm text-ink-700">גררו לכאן או לחצו להעלאה</div>
             <div className="mt-2 text-xs text-ink-500">🖼️ תמונה • 🎬 סרטון (עד 500MB)</div>
           </label>
-        </div>
-      </label>
+        )}
+
+        <input
+          type="file"
+          name="media"
+          accept="image/*,video/*"
+          className="sr-only"
+          id="media-input"
+          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+        />
+      </div>
 
       <input
         type="text"
