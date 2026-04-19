@@ -14,6 +14,15 @@ export type Blessing = {
   approved: boolean;
 };
 
+export type AlbumItem = {
+  id: string;
+  uploader_name: string | null;
+  media_url: string;
+  media_type: "image" | "video";
+  created_at: string;
+  approved: boolean;
+};
+
 export function getPublicClient() {
   if (!url || !anonKey) {
     throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY");
