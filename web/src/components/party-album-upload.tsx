@@ -127,6 +127,8 @@ export function PartyAlbumUpload() {
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (busy || pending.length === 0) return;
+    const form = e.currentTarget;
+    const company = (new FormData(form).get("company") ?? "").toString();
     setBusy(true);
     setState({ kind: "idle" });
 
@@ -176,8 +178,6 @@ export function PartyAlbumUpload() {
 
     if (uploaded.length > 0) {
       try {
-        const form = e.currentTarget;
-        const company = (new FormData(form).get("company") ?? "").toString();
         const res = await fetch("/api/album", {
           method: "POST",
           headers: { "content-type": "application/json" },
